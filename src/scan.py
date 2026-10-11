@@ -68,7 +68,7 @@ def normalize(items,now):
     return rows
 
 def peers(rows):
-    arr=list(rows.values())
+    arr=list(rows.values()) if isinstance(rows,dict) else list(rows)
     for a in arr:
         ps=[b for b in arr if b["mint"]!=a["mint"] and max(a["market_cap"],b["market_cap"])/min(a["market_cap"],b["market_cap"])<=1.25]
         a["peer_count"]=len(ps)
