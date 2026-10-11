@@ -1,0 +1,50 @@
+name: GMGN Read-Only Scan
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */3 * * *"
+  push:
+    paths:
+      - "src/**"
+      - "tests/**"
+      - ".github/workflows/gmgn.yml"
+permissions:
+  contents: write
+concurrency:
+  group: gmgn-scan
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m unittest discover -s tests -v
+  scan:
+    if: github.event_name != 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: npm install -g gmgn-cli
+      - name: Run authorized, read-only scan
+        env:
+          GMGN_API_KEY: ${{ secrets.GMGN_API_KEY }}
+        run: python src/scan.py
+      - name: Commit non-secret historical data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/latest.json data/history.jsonl reports/latest.csv reports/latest.md
+          if ! git diff --cached --quiet; then
+            git commit -m "data: GMGN hot-search scan"
+            git push
+          fi
