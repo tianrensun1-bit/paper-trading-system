@@ -132,10 +132,8 @@ def run():
     lines=["# GMGN SOL 热搜只读复评",f"抓取 UTC：{stamp}",f"来源：GMGN 官方 Hot Searches（分别为6h/24h快照；非全市场）",f"原始6h {len(result['6h'])}条，24h {len(result['24h'])}条；严格可核实筛选后6h {len(records)}条、24h {len(day)}条。","\n**样本覆盖率**：仅为接口返回条目；无法保证覆盖网页所有热搜或全市场。","**持仓**：尚未安全连接钱包，未复评私人持仓。","**1h/3h/6h未来收益**：当前仅保存快照；未经回填/到期观察，不声称已验证。","**三变量异常**：按市值(1.25倍)、换手(0.5-2倍)、币龄(0.5-2倍)同类条件，以对手绝对涨幅中位数作基准；需至少5个对手，否则记NA。","\n## 6h Price Effect 排名","|#|代币|市值USD|6h涨幅%|6h成交USD|PE|同市值对手数|条件异常|","|---:|---|---:|---:|---:|---:|---:|---:|"]
     for i,r in enumerate(records[:30],1):
         pe=r["price_effect"]; an=r["anomaly_ratio"]
-        lines.append(f"|{i}|{r['symbol']} (`{r['mint']}`)|{r['market_cap']:.0f}|{r['change']:.2f}|{r['volume']:.0f}|{pe:.2f} if pe is not None else 'NA'|{r['peer_count']}|{an:.2f} if an is not None else 'NA'|".replace("None","NA"))
+        lines.append(f"|{i}|{r['symbol']} (`{r['mint']}`)|{r['market_cap']:.0f}|{r['change']:.2f}|{r['volume']:.0f}|{f'{pe:.2f}' if pe is not None else 'NA'}|{r['peer_count']}|{f'{an:.2f}' if an is not None else 'NA'}|")
     lines+=["\n## 24h / 前18h","6h和24h请求由一次 CLI 调用组成，但服务端时间截止点未保证绝对同步；仅当每个block的采样截止时间确认相同时，才能把V18和r18视为严谨拆分。当前CSV内计算值是暂存候选，不作为确定结论。","\n## 风险和下一步","PE对薄池、刷量和异常价格敏感；不是卖压收缩的证据。下轮需验证成交方向、池深、持有人和K线；未来收益需收集可追溯K线和交易成本。","数据不足时不推荐交易。"]
-    # fix display text
-    lines=[s.replace("|"+str(r["price_effect"])+" if pe is not None else 'NA'|","|NA|") for s in lines for r in []] if False else lines
     (ROOT/"reports/latest.md").write_text("\n".join(lines)+"\n")
     print(f"Verified GMGN request: 6h={len(result['6h'])} 24h={len(result['24h'])}; filtered={len(records)}; {stamp}")
 
