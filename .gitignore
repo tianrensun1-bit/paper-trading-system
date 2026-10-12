@@ -3,3 +3,9 @@ __pycache__/
 .env
 *.key
 secrets.json
+node_modules/
+.pytest_cache/
+.env.*
+*.pem
+local-private/
+test-output/

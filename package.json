@@ -1,0 +1,8 @@
+{
+  "name": "paper-trading-system",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only GMGN SOL research data client",
+  "engines": { "node": ">=22" },
+  "dependencies": { "gmgn-cli": "1.6.6" }
+}

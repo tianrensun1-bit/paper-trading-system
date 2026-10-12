@@ -7,6 +7,8 @@ on:
     paths:
       - "src/**"
       - "tests/**"
+      - "scripts/**"
+      - "package*.json"
       - ".github/workflows/gmgn.yml"
 permissions:
   contents: write
@@ -26,7 +28,7 @@ jobs:
     if: github.event_name != 'push'
     needs: test
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,16 +36,46 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: npm install -g gmgn-cli
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Real authentication and data-contract verification
+        env:
+          GMGN_API_KEY: ${{ secrets.GMGN_API_KEY }}
+          GMGN_KEY_ROTATION_CONFIRMED: ${{ vars.GMGN_KEY_ROTATION_CONFIRMED }}
+          RUN_LIVE_TESTS: '1'
+        run: python -m unittest discover -s tests -p test_live.py -v
       - name: Run authorized, read-only scan
         env:
           GMGN_API_KEY: ${{ secrets.GMGN_API_KEY }}
+          GMGN_KEY_ROTATION_CONFIRMED: ${{ vars.GMGN_KEY_ROTATION_CONFIRMED }}
         run: python src/scan.py
+      - name: Mark setup or scan failure
+        if: failure()
+        run: python scripts/mark_failure.py
+      - name: Recovery snapshot archive
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: market-snapshot-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            data/runs/
+            data/latest.json
+            data/status.json
+            data/history.jsonl
+            reports/latest.csv
+            reports/latest.md
+          retention-days: 90
+          if-no-files-found: error
       - name: Commit non-secret historical data
+        if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/latest.json data/history.jsonl reports/latest.csv reports/latest.md
+          for item in data/runs/ data/latest.json data/history.jsonl data/status.json reports/latest.csv reports/latest.md; do
+            if [ -e "$item" ]; then git add -- "$item"; fi
+          done
           if ! git diff --cached --quiet; then
             git commit -m "data: GMGN hot-search scan"
             git push
